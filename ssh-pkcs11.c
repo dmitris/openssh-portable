@@ -471,8 +471,10 @@ pkcs11_ecdsa_wrap(struct pkcs11_provider *provider, CK_ULONG slotidx,
 	provider->refcount++; /* provider referenced by ECDSA key */
 	k11->slotidx = slotidx;
 	/* identify key object on smartcard */
-	k11->keyid_len = keyid_attrib->ulValueLen;
-	k11->keyid = xmalloc(k11->keyid_len);
+	if (k11->keyid_len > 0) {
+	  k11->keyid_len = keyid_attrib->ulValueLen;
+	  k11->keyid = xmalloc(k11->keyid_len);
+	}
 	memcpy(k11->keyid, keyid_attrib->pValue, k11->keyid_len);
 	ECDSA_set_method(ecdsa, get_pkcs11_ecdsa_method());
 	ECDSA_set_ex_data(ecdsa, pkcs11_key_idx, k11);
