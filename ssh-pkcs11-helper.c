@@ -215,6 +215,7 @@ process_sign(void)
 							signature = xcalloc(2, nbytes);
 							BN_bn2bin(sig->r, signature + nbytes - rlen);
 							BN_bn2bin(sig->s, signature + nbytes + nbytes - slen);
+							ECDSA_SIG_free(sig);
 							slen = 2*nbytes;
 							ok = 0;
 						}
