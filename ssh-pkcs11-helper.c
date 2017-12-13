@@ -201,17 +201,29 @@ process_sign(void)
 				}
 #ifdef ENABLE_PKCS11_ECDSA
 			} else if(found->type == KEY_ECDSA) {
-				ECDSA_SIG *sig = NULL;
+				ECDSA_SIG *sig;
 				if ((sig = ECDSA_do_sign(data, dlen, found->ecdsa)) != NULL) {
-					int rlen = BN_num_bytes(sig->r);
-					slen = BN_num_bytes(sig->s);
-					signature = xmalloc(slen + rlen);
-					BN_bn2bin(sig->r, signature);
-					BN_bn2bin(sig->s, signature + rlen);
+					/* PKCS11 2.3.1 recommends both r and s to have the order size for backward compatiblity */
+
+					const EC_GROUP *group;
+					BIGNUM *order = NULL;
+					if ((group = EC_KEY_get0_group(found->ecdsa)) != NULL && (order = BN_new()) != NULL && EC_GROUP_get_order(group, order, NULL)) {
+						u_int nbytes = BN_num_bytes(order);
+						u_int rlen = BN_num_bytes(sig->r);
+						slen = BN_num_bytes(sig->s);
+						if (rlen <= nbytes && slen <= nbytes) {
+							signature = xcalloc(2, nbytes);
+							BN_bn2bin(sig->r, signature + nbytes - rlen);
+							BN_bn2bin(sig->s, signature + nbytes + nbytes - slen);
+							slen = 2*nbytes;
+							ok = 0;
+						}
+					}
+					if (order != NULL)
+						BN_free(order);
 					ECDSA_SIG_free(sig);
-					slen += rlen;
-					ok = 0;
 				}
+
 #endif /* ENABLE_PKCS11_ECDSA */
 			} else {
 				/* Unsupported type */
